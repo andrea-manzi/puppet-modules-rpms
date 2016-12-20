@@ -1,0 +1,28 @@
+#! /bin/bash
+
+#set -x
+
+mods_dir=$(dirname $0)/modules
+pkgs_dir=$(dirname $0)/pkgs
+spkgs_dir=$(dirname $0)/spkgs
+p2r_script=$(dirname $0)/puppet2pkg
+
+puppet module --modulepath $mods_dir upgrade sartiran-dpm
+
+rm -rf $pkgs_dir $spkgs_dir
+mkdir -p $pkgs_dir $spkgs_dir
+
+for mod in $(ls $mods_dir);
+do
+  $p2r_script -mod $mods_dir/$mod
+done
+
+pushd $pkgs_dir
+createrepo .
+popd
+
+pushd $spkgs_dir
+createrepo .
+popd
+
+

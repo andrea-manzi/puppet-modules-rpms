@@ -1,0 +1,55 @@
+#! /bin/bash
+
+##H Create an rpm out pf a puppet module
+##H
+##H puppet2pkg [-builddir DIR] [-spectpl FILE] [-dest DIR] -mod MODULE_DIR
+##H
+
+
+rpmbuild_dir=/var/tmp/rpmbuild;
+mod_dir='';
+spec_template=$(dirname $0)/puppet2pkg.spec
+rpm_repo=$(dirname $0)/pkgs
+srpm_repo=$(dirname $0)/spkgs
+
+while [ $# -ge 1 ]; do
+  case $1 in
+    -builddir ) rpmbuild_dir=$2; shift ; shift ;;
+    -mod ) mod_dir=$2; shift ; shift ;;
+    -spectpl ) spec_template=$2; shift ; shift ;;
+    -dest ) rpm_repo=$2; shift ; shift ;;
+    -dest_src ) srpm_repo=$2; shift ; shift ;;
+    -h ) grep '##H' $0|grep -v grep|cut -d 'H' -f 2-;exit 0;;
+    -* ) echo "unrecognised option $1. Use -h for help" 1>&2; exit 5 ;;
+    *  ) break ;;
+  esac
+done
+
+set -x
+
+echo "%_topdir $rpmbuild_dir" > ~/.rpmmacros
+echo "%_tmppath $rpmbuild_dir/tmp" >> ~/.rpmmacros
+
+rm -rf $rpmbuild_dir
+
+mkdir -p $rpmbuild_dir;
+
+for i in BUILD RPMS SRPMS SPECS tmp;do mkdir -p $rpmbuild_dir/${i};done
+
+mkdir -p $rpmbuild_dir/SOURCES/etc/puppet/modules
+
+cp -r $mod_dir $rpmbuild_dir/SOURCES/etc/puppet/modules/
+
+tar -czf $rpmbuild_dir/SOURCES/module.tar.gz -C $rpmbuild_dir/SOURCES/ etc/puppet/modules
+
+$spec_template $mod_dir > $rpmbuild_dir/SPECS/pkg.spec
+
+rpmbuild -ba $rpmbuild_dir/SPECS/pkg.spec
+
+rm ~/.rpmmacros
+
+cp $rpmbuild_dir/RPMS/noarch/*.rpm $rpm_repo/
+
+cp $rpmbuild_dir/SRPMS/*.rpm $srpm_repo/
+
+rm -rf $rpmbuild_dir
